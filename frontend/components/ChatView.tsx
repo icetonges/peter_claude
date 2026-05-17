@@ -335,6 +335,7 @@ export default function ChatView({ conversation, onUpdate, onNew }: Props) {
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (
           <div className="flex flex-col h-full">
+            {/* Greeting — vertically centered in the upper portion */}
             <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4">
               <div className="flex items-center gap-4">
                 <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -351,13 +352,25 @@ export default function ChatView({ conversation, onUpdate, onNew }: Props) {
               </div>
               <p className="text-sm text-[var(--text-tertiary)]">Powered by {modelInfo.name}</p>
             </div>
-            <div className="flex flex-wrap gap-2 justify-center pb-6 px-4">
-              {[{label:'Write',prompt:'Help me write '},{label:'Learn',prompt:'Explain to me '},{label:'Code',prompt:'Write code to '},{label:'Life stuff',prompt:'Help me with '},{label:"Claude's choice",prompt:'Surprise me with something interesting about '}].map(qa => (
-                <button key={qa.label} onClick={() => handleSend(qa.prompt, [])}
-                  className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:border-[var(--text-tertiary)] transition-colors">
-                  {qa.label}
-                </button>
-              ))}
+            {/* Pills + input box — grouped below greeting, centered */}
+            <div className="flex flex-col items-center gap-4 pb-10 px-4 w-full max-w-3xl mx-auto">
+              <div className="flex flex-wrap gap-2 justify-center">
+                {[{label:'Write',prompt:'Help me write '},{label:'Learn',prompt:'Explain to me '},{label:'Code',prompt:'Write code to '},{label:'Life stuff',prompt:'Help me with '},{label:"Claude's choice",prompt:'Surprise me with something interesting about '}].map(qa => (
+                  <button key={qa.label} onClick={() => handleSend(qa.prompt, [])}
+                    className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:border-[var(--text-tertiary)] transition-colors">
+                    {qa.label}
+                  </button>
+                ))}
+              </div>
+              <MessageInput
+                onSend={handleSend} model={model} onModelChange={setModel}
+                webSearch={webSearch} onWebSearchChange={handleWebSearchChange}
+                research={research} onResearchChange={setResearch}
+                skill={skill} onSkillChange={setSkill}
+                style={style} onStyleChange={setStyle}
+                disabled={streaming}
+                placeholder={streaming ? 'Click to stop generation' : undefined}
+              />
             </div>
           </div>
         ) : (
@@ -402,17 +415,19 @@ export default function ChatView({ conversation, onUpdate, onNew }: Props) {
         )}
       </div>
 
-      <div className="max-w-3xl mx-auto w-full">
-        <MessageInput
-          onSend={handleSend} model={model} onModelChange={setModel}
-          webSearch={webSearch} onWebSearchChange={handleWebSearchChange}
-          research={research} onResearchChange={setResearch}
-          skill={skill} onSkillChange={setSkill}
-          style={style} onStyleChange={setStyle}
-          disabled={streaming}
-          placeholder={streaming ? 'Click to stop generation' : undefined}
-        />
-      </div>
+      {!isEmpty && (
+        <div className="max-w-3xl mx-auto w-full">
+          <MessageInput
+            onSend={handleSend} model={model} onModelChange={setModel}
+            webSearch={webSearch} onWebSearchChange={handleWebSearchChange}
+            research={research} onResearchChange={setResearch}
+            skill={skill} onSkillChange={setSkill}
+            style={style} onStyleChange={setStyle}
+            disabled={streaming}
+            placeholder={streaming ? 'Click to stop generation' : undefined}
+          />
+        </div>
+      )}
     </div>
   )
 }
