@@ -124,7 +124,7 @@ export default function ModelSelector({ value, onChange, disabled }: Props) {
                             </span>
                           )}
                           {model.supportsVision && (
-                            <Eye size={10} className="text-[var(--text-tertiary)]" title="Supports image uploads" />
+                            <Eye size={10} className="text-[var(--text-tertiary)]" aria-label="Supports image uploads" />
                           )}
                         </div>
                         <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 truncate">{model.description}</p>
