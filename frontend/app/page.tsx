@@ -19,9 +19,7 @@ export default function Home() {
   useEffect(() => {
     const stored = loadConversations()
     setConversations(stored)
-    if (stored.length > 0) {
-      setActiveId(stored.sort((a, b) => b.updatedAt - a.updatedAt)[0].id)
-    }
+    // Always open new chat screen on load
     setHydrated(true)
   }, [])
 
@@ -34,6 +32,11 @@ export default function Home() {
     const conv = createConversation()
     setConversations(prev => [conv, ...prev])
     setActiveId(conv.id)
+  }
+
+  function handleNewWithSkill(skill: string) {
+    handleNew()
+    // skill routing handled by ChatView default props
   }
 
   function handleSelect(id: string) {
@@ -56,12 +59,6 @@ export default function Home() {
     )
   }
 
-  // Auto-create first conversation
-  function handleFirstMessage() {
-    if (!activeId) {
-      handleNew()
-    }
-  }
 
   const activeConversation = conversations.find(c => c.id === activeId) ?? null
 
@@ -81,20 +78,35 @@ export default function Home() {
         onSelect={handleSelect}
         onNew={handleNew}
         onDelete={handleDelete}
+        onNewWithSkill={handleNewWithSkill}
       />
 
       {activeConversation ? (
         <ChatView conversation={activeConversation} onUpdate={handleUpdate} />
       ) : (
-        /* No conversation selected */
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-[var(--bg)]">
-          <p className="text-[var(--text-secondary)] text-sm">Select a conversation or start a new one.</p>
-          <button
-            onClick={handleNew}
-            className="rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--accent-hover)] transition-colors"
-          >
-            New conversation
-          </button>
+        /* New chat welcome screen */
+        <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 bg-[var(--bg)]">
+          <div className="flex items-center gap-4">
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <g transform="translate(26,26)">
+                <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(0)"/>
+                <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(45)"/>
+                <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(90)"/>
+                <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(135)"/>
+              </g>
+            </svg>
+            <h1 className="text-5xl font-normal tracking-tight text-[var(--text-primary)]" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
+              How can I help you?
+            </h1>
+          </div>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {['Write', 'Learn', 'Code', 'Life stuff'].map(label => (
+              <button key={label} onClick={handleNew}
+                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] transition-colors">
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

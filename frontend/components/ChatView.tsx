@@ -5,7 +5,7 @@ import { Conversation, Message, Attachment, ModelId, MODELS, DEFAULT_MODEL_ID } 
 import MessageBubble from './MessageBubble'
 import MessageInput, { type Skill, type Style } from './MessageInput'
 import TokenBadge from './TokenBadge'
-import { Sparkles, Globe } from 'lucide-react'
+import { Globe } from 'lucide-react'
 
 interface Props {
   conversation: Conversation | null
@@ -167,11 +167,20 @@ export default function ChatView({ conversation, onUpdate }: Props) {
   const [searchingStatus, setSearchingStatus] = useState<string | null>(null)
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL_ID)
   const [prevModel, setPrevModel] = useState<ModelId>(DEFAULT_MODEL_ID)
-  const [webSearch, setWebSearch] = useState(false)
+  const [webSearch, setWebSearch] = useState(true)
   const [research, setResearch] = useState(false)
   const [skill, setSkill] = useState<Skill>('general')
   const [style, setStyle] = useState<Style>('default')
+  const [greeting, setGreeting] = useState('Hello')
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const h = new Date().getHours()
+    if (h >= 5 && h < 12) setGreeting('Good morning')
+    else if (h >= 12 && h < 17) setGreeting('Good afternoon')
+    else if (h >= 17 && h < 21) setGreeting('Good evening')
+    else setGreeting('Hello, night owl')
+  }, [])
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -315,21 +324,28 @@ export default function ChatView({ conversation, onUpdate }: Props) {
 
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (
-          <div className="flex flex-col items-center justify-center h-full gap-8 px-4">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#da7756] to-[#c85a3a] flex items-center justify-center shadow-lg">
-                <Sparkles size={24} className="text-white" />
+          <div className="flex flex-col h-full">
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4">
+              <div className="flex items-center gap-4">
+                <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <g transform="translate(26,26)">
+                    <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756"/>
+                    <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(45)"/>
+                    <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(90)"/>
+                    <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(135)"/>
+                  </g>
+                </svg>
+                <h1 className="text-5xl font-normal tracking-tight text-[var(--text-primary)]" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
+                  {greeting}
+                </h1>
               </div>
-              <div className="text-center">
-                <h1 className="text-2xl font-semibold text-[var(--text-primary)]">How can I help you?</h1>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">Powered by {modelInfo.name}</p>
-              </div>
+              <p className="text-sm text-[var(--text-tertiary)]">Powered by {modelInfo.name}</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
-              {STARTERS.map(s => (
-                <button key={s.label} onClick={() => conversation && handleSend(s.prompt, [])}
-                  className="flex items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-left text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] transition-colors">
-                  <span className="text-base">{s.icon}</span><span>{s.label}</span>
+            <div className="flex flex-wrap gap-2 justify-center pb-6 px-4">
+              {[{label:'Write',prompt:'Help me write '},{label:'Learn',prompt:'Explain to me '},{label:'Code',prompt:'Write code to '},{label:'Life stuff',prompt:'Help me with '},{label:"Claude's choice",prompt:'Surprise me with something interesting about '}].map(qa => (
+                <button key={qa.label} onClick={() => conversation && handleSend(qa.prompt, [])}
+                  className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:border-[var(--text-tertiary)] transition-colors">
+                  {qa.label}
                 </button>
               ))}
             </div>
