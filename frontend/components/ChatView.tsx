@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { Conversation, Message, Attachment, ModelId, MODELS } from '@/lib/types'
+import { Conversation, Message, Attachment, ModelId, MODELS, DEFAULT_MODEL_ID } from '@/lib/types'
 import MessageBubble from './MessageBubble'
 import MessageInput from './MessageInput'
 import TokenBadge from './TokenBadge'
@@ -22,7 +22,7 @@ const STARTERS = [
 export default function ChatView({ conversation, onUpdate }: Props) {
   const [streaming, setStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
-  const [model, setModel] = useState<ModelId>('claude-sonnet-4-6')
+  const [model, setModel] = useState<ModelId>(DEFAULT_MODEL_ID)
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -77,6 +77,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
         signal: abort.signal,
         body: JSON.stringify({
           model,
+          supportsVision: MODELS.find(m => m.id === model)?.supportsVision ?? false,
           messages: updatedConv.messages.map(m => ({
             role: m.role,
             content: m.content,

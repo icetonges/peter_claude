@@ -1,4 +1,4 @@
-import { Conversation, ModelId, Message, TokenUsage } from './types'
+import { Conversation, ModelId, Message, TokenUsage, DEFAULT_MODEL_ID } from './types'
 
 const STORAGE_KEY = 'peterclaude_conversations'
 
@@ -22,7 +22,7 @@ export function saveConversations(conversations: Conversation[]): void {
   }
 }
 
-export function createConversation(model: ModelId): Conversation {
+export function createConversation(model: ModelId = DEFAULT_MODEL_ID): Conversation {
   return {
     id: crypto.randomUUID(),
     title: 'New conversation',

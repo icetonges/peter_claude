@@ -31,7 +31,7 @@ export default function Home() {
   }, [conversations, hydrated])
 
   function handleNew() {
-    const conv = createConversation('claude-sonnet-4-6')
+    const conv = createConversation()
     setConversations(prev => [conv, ...prev])
     setActiveId(conv.id)
   }

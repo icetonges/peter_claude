@@ -128,10 +128,20 @@ const MODELS = [
 ]
 
 const PROVIDERS = [
-  { id: 'firstParty', label: 'Anthropic API', env: 'default', endpoint: 'api.anthropic.com', color: '#c85a3a' },
-  { id: 'bedrock', label: 'AWS Bedrock', env: 'CLAUDE_CODE_USE_BEDROCK=1', endpoint: 'us.anthropic.*', color: '#f59e0b' },
-  { id: 'vertex', label: 'Google Vertex', env: 'CLAUDE_CODE_USE_VERTEX=1', endpoint: 'vertex.ai/*', color: '#3b82f6' },
-  { id: 'foundry', label: 'Azure Foundry', env: 'CLAUDE_CODE_USE_FOUNDRY=1', endpoint: 'azure.*', color: '#8b5cf6' },
+  { id: 'firstParty', label: 'Anthropic API', env: 'ANTHROPIC_API_KEY', endpoint: 'api.anthropic.com', color: '#c85a3a', free: false },
+  { id: 'google', label: 'Google Gemini', env: 'GEMINI_API_KEY', endpoint: 'generativelanguage.googleapis.com/v1beta/openai', color: '#4285f4', free: true },
+  { id: 'groq', label: 'Groq', env: 'GROQ_API_KEY', endpoint: 'api.groq.com/openai/v1', color: '#f55036', free: true },
+  { id: 'bedrock', label: 'AWS Bedrock (CLI)', env: 'CLAUDE_CODE_USE_BEDROCK=1', endpoint: 'us.anthropic.*', color: '#f59e0b', free: false },
+]
+
+const FREE_MODELS = [
+  { provider: 'Google', color: '#4285f4', name: 'Gemini 2.5 Flash', id: 'gemini-2.5-flash-preview-05-20', ctx: '1M', badge: 'Default', vision: true },
+  { provider: 'Google', color: '#4285f4', name: 'Gemini 2.0 Flash', id: 'gemini-2.0-flash', ctx: '1M', badge: '', vision: true },
+  { provider: 'Google', color: '#4285f4', name: 'Gemini 1.5 Flash', id: 'gemini-1.5-flash', ctx: '1M', badge: '', vision: true },
+  { provider: 'Groq', color: '#f55036', name: 'Llama 3.3 70B', id: 'llama-3.3-70b-versatile', ctx: '128K', badge: 'Fast', vision: false },
+  { provider: 'Groq', color: '#f55036', name: 'Llama 3.1 8B Instant', id: 'llama-3.1-8b-instant', ctx: '128K', badge: 'Fastest', vision: false },
+  { provider: 'Groq', color: '#f55036', name: 'Mixtral 8x7B', id: 'mixtral-8x7b-32768', ctx: '32K', badge: '', vision: false },
+  { provider: 'Groq', color: '#f55036', name: 'Gemma 2 9B', id: 'gemma2-9b-it', ctx: '8K', badge: '', vision: false },
 ]
 
 const SOURCE_DIRS = [
@@ -762,16 +772,68 @@ function ModelsSection() {
         <p className="text-xs text-[var(--text-tertiary)] mt-2 pl-1">Each key maps to 4 provider-specific ID strings (firstParty, bedrock, vertex, foundry). The correct string is selected at runtime based on the active provider env variable.</p>
       </div>
 
+      {/* Free models table */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-3">Free Models Available in the Web UI</h3>
+        <div className="overflow-x-auto rounded-2xl border border-[var(--border)]">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[var(--surface-hover)]">
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Provider</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Model</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">API Key Env</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Context</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Vision</th>
+              </tr>
+            </thead>
+            <tbody>
+              {FREE_MODELS.map((m, i) => (
+                <tr key={m.id} className={`border-t border-[var(--border)] ${i % 2 === 0 ? 'bg-[var(--surface)]' : 'bg-[var(--surface-hover)]'}`}>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
+                      <span className="text-xs font-semibold" style={{ color: m.color }}>{m.provider}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <code className="font-mono text-xs text-[var(--text-secondary)]">{m.name}</code>
+                      {m.badge && <span className="rounded-full bg-green-500/20 text-green-600 dark:text-green-400 px-1.5 py-0.5 text-[9px] font-bold">{m.badge}</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5"><code className="font-mono text-[10px] text-[var(--text-tertiary)]">{m.provider === 'Google' ? 'GEMINI_API_KEY' : 'GROQ_API_KEY'}</code></td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-secondary)]">{m.ctx}</td>
+                  <td className="px-4 py-2.5 text-xs">{m.vision ? '✅' : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+            <div className="text-xs font-semibold text-[#4285f4] mb-1">Get Google Gemini key (free)</div>
+            <code className="text-[11px] font-mono text-[var(--text-secondary)]">aistudio.google.com/app/apikey</code>
+            <div className="text-[10px] text-[var(--text-tertiary)] mt-1">15 req/min · 1,500 req/day free</div>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+            <div className="text-xs font-semibold text-[#f55036] mb-1">Get Groq key (free)</div>
+            <code className="text-[11px] font-mono text-[var(--text-secondary)]">console.groq.com/keys</code>
+            <div className="text-[10px] text-[var(--text-tertiary)] mt-1">14,400 req/day · ultra-fast inference</div>
+          </div>
+        </div>
+      </div>
+
       {/* Model selection in web UI */}
       <div>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-3">Model Selection in the Web UI</h3>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-3">
           {[
-            { step: '1', title: 'Initial default', desc: 'ChatView mounts with claude-sonnet-4-6 as default. Syncs to conversation.model if a saved conversation is loaded.' },
-            { step: '2', title: 'ModelSelector dropdown', desc: 'User opens the dropdown above the input box. Three models shown: Opus 4.6, Sonnet 4.6, Haiku 4.5 — each with live pricing ($/M tokens).' },
-            { step: '3', title: 'Per-message model', desc: 'The selected model is stored in React state and sent with every /api/chat request. Each Message object records which model generated it.' },
-            { step: '4', title: 'Cost tracking', desc: 'TokenBadge reads the model\'s pricing from MODELS[] and calculates cost as (inputTokens/1M × inputPrice) + (outputTokens/1M × outputPrice).' },
-            { step: '5', title: 'Persistence', desc: 'Conversation.model is written to localStorage so the same model is pre-selected when a conversation is resumed.' },
+            { step: '1', title: 'Default: Gemini 2.5 Flash (free)', desc: 'App opens with Gemini 2.5 Flash selected — the best free model with 1M context and vision support.' },
+            { step: '2', title: 'Grouped model picker', desc: 'Dropdown shows three groups: Google (free), Groq (free), Anthropic (paid). Each model shows context window, FREE badge, and vision icon.' },
+            { step: '3', title: 'Provider routing', desc: 'API route detects the provider from the model ID prefix (gemini→Google, llama/mixtral/gemma→Groq, otherwise→Anthropic) and routes to the correct endpoint.' },
+            { step: '4', title: 'Per-message tracking', desc: 'Each Message stores which model generated it. Token counts are parsed from the streaming response (usage chunk at end of stream).' },
+            { step: '5', title: 'Cost display', desc: 'Free models show "Free tier" instead of a dollar amount. Anthropic models show $/M token pricing.' },
+            { step: '6', title: 'Persistence', desc: 'Selected model is saved to the Conversation object in localStorage and restored when the conversation is reopened.' },
           ].map((s, i) => (
             <div key={s.step} className="flex gap-3">
               <div className="w-6 h-6 rounded-full bg-[var(--accent)] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{s.step}</div>
