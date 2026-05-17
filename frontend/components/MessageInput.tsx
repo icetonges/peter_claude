@@ -3,22 +3,39 @@
 import { useRef, useState, useEffect } from 'react'
 import { Attachment, ModelId } from '@/lib/types'
 import ModelSelector from './ModelSelector'
-import { Paperclip, Send, X, ArrowUp } from 'lucide-react'
+import { Plus, ArrowUp, X, Globe, FlaskConical, Image, Check } from 'lucide-react'
 
 interface Props {
   onSend: (content: string, attachments: Attachment[]) => void
   model: ModelId
   onModelChange: (m: ModelId) => void
+  webSearch: boolean
+  onWebSearchChange: (v: boolean) => void
+  research: boolean
+  onResearchChange: (v: boolean) => void
   disabled?: boolean
   placeholder?: string
 }
 
-export default function MessageInput({ onSend, model, onModelChange, disabled, placeholder }: Props) {
+export default function MessageInput({
+  onSend,
+  model,
+  onModelChange,
+  webSearch,
+  onWebSearchChange,
+  research,
+  onResearchChange,
+  disabled,
+  placeholder,
+}: Props) {
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [dragging, setDragging] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const plusBtnRef = useRef<HTMLButtonElement>(null)
 
   // Auto-resize textarea
   useEffect(() => {
@@ -27,6 +44,20 @@ export default function MessageInput({ onSend, model, onModelChange, disabled, p
     el.style.height = 'auto'
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }, [text])
+
+  // Close menu on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        plusBtnRef.current && !plusBtnRef.current.contains(e.target as Node)
+      ) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   async function fileToAttachment(file: File): Promise<Attachment> {
     return new Promise((resolve, reject) => {
@@ -50,7 +81,7 @@ export default function MessageInput({ onSend, model, onModelChange, disabled, p
 
   async function handleFiles(files: FileList | File[]) {
     const arr = Array.from(files)
-    const maxSize = 5 * 1024 * 1024 // 5 MB
+    const maxSize = 5 * 1024 * 1024
     const allowed = arr.filter(f => {
       if (f.size > maxSize) { alert(`"${f.name}" is too large (max 5 MB).`); return false }
       return true
@@ -79,7 +110,6 @@ export default function MessageInput({ onSend, model, onModelChange, disabled, p
     setAttachments(prev => prev.filter(a => a.id !== id))
   }
 
-  // Drag & drop
   function handleDragOver(e: React.DragEvent) { e.preventDefault(); setDragging(true) }
   function handleDragLeave() { setDragging(false) }
   function handleDrop(e: React.DragEvent) {
@@ -88,7 +118,23 @@ export default function MessageInput({ onSend, model, onModelChange, disabled, p
     if (e.dataTransfer.files) handleFiles(e.dataTransfer.files)
   }
 
+  function handleAddFiles() {
+    setMenuOpen(false)
+    fileInputRef.current?.click()
+  }
+
+  function toggleWebSearch() {
+    onWebSearchChange(!webSearch)
+    setMenuOpen(false)
+  }
+
+  function toggleResearch() {
+    onResearchChange(!research)
+    setMenuOpen(false)
+  }
+
   const canSend = (text.trim().length > 0 || attachments.length > 0) && !disabled
+  const hasActiveOptions = webSearch || research
 
   return (
     <div className="px-4 pb-4 pt-2">
@@ -134,6 +180,32 @@ export default function MessageInput({ onSend, model, onModelChange, disabled, p
           </div>
         )}
 
+        {/* Active option chips */}
+        {hasActiveOptions && (
+          <div className="flex flex-wrap gap-1.5 px-4 pt-2.5">
+            {webSearch && (
+              <button
+                onClick={() => onWebSearchChange(false)}
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-blue-500/15 text-blue-500 hover:bg-blue-500/25 transition-colors"
+              >
+                <Globe size={11} />
+                Web search
+                <X size={10} className="ml-0.5 opacity-70" />
+              </button>
+            )}
+            {research && (
+              <button
+                onClick={() => onResearchChange(false)}
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-purple-500/15 text-purple-500 hover:bg-purple-500/25 transition-colors"
+              >
+                <FlaskConical size={11} />
+                Research
+                <X size={10} className="ml-0.5 opacity-70" />
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Textarea */}
         <textarea
           ref={textareaRef}
@@ -149,17 +221,73 @@ export default function MessageInput({ onSend, model, onModelChange, disabled, p
 
         {/* Bottom bar */}
         <div className="flex items-center justify-between px-3 pb-2.5">
-          <div className="flex items-center gap-1">
-            {/* File upload */}
+          <div className="flex items-center gap-1 relative">
+            {/* "+" button */}
             <button
+              ref={plusBtnRef}
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => setMenuOpen(v => !v)}
               disabled={disabled}
-              className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors disabled:opacity-50"
-              title="Attach file"
+              className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                menuOpen
+                  ? 'text-[var(--accent)] bg-[var(--accent)]/10'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
+              }`}
+              title="Add tools"
             >
-              <Paperclip size={16} />
+              <Plus size={17} strokeWidth={2.2} />
             </button>
+
+            {/* Popup menu */}
+            {menuOpen && (
+              <div
+                ref={menuRef}
+                className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg py-1 z-50"
+              >
+                {/* Add files */}
+                <button
+                  onClick={handleAddFiles}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-[var(--surface-hover)] flex items-center justify-center flex-shrink-0">
+                    <Image size={14} className="text-[var(--text-secondary)]" />
+                  </div>
+                  <span>Add files or photos</span>
+                </button>
+
+                <div className="my-1 border-t border-[var(--border)]" />
+
+                {/* Web search toggle */}
+                <button
+                  onClick={toggleWebSearch}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors"
+                >
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    webSearch ? 'bg-blue-500/15' : 'bg-[var(--surface-hover)]'
+                  }`}>
+                    <Globe size={14} className={webSearch ? 'text-blue-500' : 'text-[var(--text-secondary)]'} />
+                  </div>
+                  <span className="flex-1 text-left">Web search</span>
+                  {webSearch && <Check size={14} className="text-blue-500 flex-shrink-0" />}
+                </button>
+
+                {/* Research mode toggle */}
+                <button
+                  onClick={toggleResearch}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors"
+                >
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    research ? 'bg-purple-500/15' : 'bg-[var(--surface-hover)]'
+                  }`}>
+                    <FlaskConical size={14} className={research ? 'text-purple-500' : 'text-[var(--text-secondary)]'} />
+                  </div>
+                  <span className="flex-1 text-left">Research mode</span>
+                  {research && <Check size={14} className="text-purple-500 flex-shrink-0" />}
+                </button>
+              </div>
+            )}
+
+            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"

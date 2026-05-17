@@ -5,7 +5,7 @@ import { Conversation, Message, Attachment, ModelId, MODELS, DEFAULT_MODEL_ID } 
 import MessageBubble from './MessageBubble'
 import MessageInput from './MessageInput'
 import TokenBadge from './TokenBadge'
-import { Bot, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 
 interface Props {
   conversation: Conversation | null
@@ -19,10 +19,16 @@ const STARTERS = [
   { icon: '🐛', label: 'Debug code', prompt: 'Help me debug this code:\n\n```\n\n```' },
 ]
 
+// When web search is on, route to the compound-beta model (has built-in web search)
+const WEB_SEARCH_MODEL = 'groq/compound-beta'
+
 export default function ChatView({ conversation, onUpdate }: Props) {
   const [streaming, setStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL_ID)
+  const [webSearch, setWebSearch] = useState(false)
+  const [research, setResearch] = useState(false)
+  const [prevModel, setPrevModel] = useState<ModelId>(DEFAULT_MODEL_ID)
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -35,6 +41,28 @@ export default function ChatView({ conversation, onUpdate }: Props) {
   useEffect(() => {
     if (conversation) setModel(conversation.model)
   }, [conversation?.id])
+
+  // Switch model when web search toggled
+  function handleWebSearchChange(val: boolean) {
+    setWebSearch(val)
+    if (val) {
+      setPrevModel(model)
+      setModel(WEB_SEARCH_MODEL)
+    } else {
+      setModel(prevModel)
+    }
+  }
+
+  // Build an augmented system prompt for research mode
+  function buildSystemPrompt(): string | undefined {
+    if (!research) return undefined
+    return `You are a thorough research assistant. When answering, you:
+1. Break down the topic into key subtopics
+2. Provide well-structured, detailed analysis with evidence and reasoning
+3. Cite sources or note when claims are uncertain
+4. Summarize key takeaways at the end
+Be comprehensive but clear and well-organized.`
+  }
 
   async function handleSend(content: string, attachments: Attachment[]) {
     if (!conversation) return
@@ -51,7 +79,6 @@ export default function ChatView({ conversation, onUpdate }: Props) {
       timestamp: Date.now(),
     }
 
-    // Optimistically add user message and update model
     let updatedConv: Conversation = {
       ...conversation,
       model,
@@ -78,6 +105,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
         body: JSON.stringify({
           model,
           supportsVision: MODELS.find(m => m.id === model)?.supportsVision ?? false,
+          systemPrompt: buildSystemPrompt(),
           messages: updatedConv.messages.map(m => ({
             role: m.role,
             content: m.content,
@@ -151,7 +179,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
     }
   }
 
-  const modelInfo = MODELS.find(m => m.id === model) ?? MODELS[1]
+  const modelInfo = MODELS.find(m => m.id === model) ?? MODELS[0]
   const isEmpty = !conversation || conversation.messages.length === 0
 
   return (
@@ -173,7 +201,6 @@ export default function ChatView({ conversation, onUpdate }: Props) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (
-          /* Welcome / empty state */
           <div className="flex flex-col items-center justify-center h-full gap-8 px-4">
             <div className="flex flex-col items-center gap-3">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#da7756] to-[#c85a3a] flex items-center justify-center shadow-lg">
@@ -185,7 +212,6 @@ export default function ChatView({ conversation, onUpdate }: Props) {
               </div>
             </div>
 
-            {/* Starter prompts */}
             <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
               {STARTERS.map(s => (
                 <button
@@ -246,8 +272,12 @@ export default function ChatView({ conversation, onUpdate }: Props) {
           onSend={handleSend}
           model={model}
           onModelChange={setModel}
+          webSearch={webSearch}
+          onWebSearchChange={handleWebSearchChange}
+          research={research}
+          onResearchChange={setResearch}
           disabled={!conversation}
-          placeholder={streaming ? 'Claude is responding… (click Send to stop)' : 'Message Claude…'}
+          placeholder={streaming ? 'Claude is thinking… (click to cancel)' : undefined}
         />
       </div>
     </div>
