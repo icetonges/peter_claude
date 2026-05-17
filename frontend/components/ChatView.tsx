@@ -5,7 +5,7 @@ import { Conversation, Message, Attachment, ModelId, MODELS, DEFAULT_MODEL_ID } 
 import MessageBubble from './MessageBubble'
 import MessageInput, { Skill, Style } from './MessageInput'
 import TokenBadge from './TokenBadge'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Globe } from 'lucide-react'
 
 interface Props {
   conversation: Conversation | null
@@ -19,7 +19,10 @@ const STARTERS = [
   { icon: '🐛', label: 'Debug code',     prompt: 'Help me debug this code:\n\n```\n\n```' },
 ]
 
-const WEB_SEARCH_MODEL = 'groq/compound-beta'
+// Only switch to compound-beta for Groq/other providers.
+// Anthropic Claude models use their native web_search_20250305 beta tool.
+// Gemini models use Google Search grounding.
+const GROQ_WEB_SEARCH_MODEL = 'groq/compound-beta'
 
 const SKILL_PROMPTS: Record<Skill, string> = {
   general:  '',
@@ -41,6 +44,7 @@ const STYLE_INSTRUCTIONS: Record<Style, string> = {
 export default function ChatView({ conversation, onUpdate }: Props) {
   const [streaming, setStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
+  const [searchingStatus, setSearchingStatus] = useState<string | null>(null)
   const [model, setModel] = useState<ModelId>(DEFAULT_MODEL_ID)
   const [prevModel, setPrevModel] = useState<ModelId>(DEFAULT_MODEL_ID)
   const [webSearch, setWebSearch] = useState(false)
@@ -60,8 +64,21 @@ export default function ChatView({ conversation, onUpdate }: Props) {
 
   function handleWebSearchChange(val: boolean) {
     setWebSearch(val)
-    if (val) { setPrevModel(model); setModel(WEB_SEARCH_MODEL) }
-    else { setModel(prevModel) }
+    const modelInfo = MODELS.find(m => m.id === model)
+    const provider = modelInfo?.provider ?? 'groq'
+
+    if (val) {
+      // Anthropic models: keep the model — server uses native web_search_20250305 tool
+      // Gemini models: keep the model — server uses Google Search grounding
+      // Groq / other models: switch to compound-beta which has built-in web search
+      if (provider !== 'anthropic' && provider !== 'google') {
+        setPrevModel(model)
+        setModel(GROQ_WEB_SEARCH_MODEL)
+      }
+    } else {
+      // Restore previous model if we had switched away
+      if (prevModel && prevModel !== model) setModel(prevModel)
+    }
   }
 
   function buildSystemPrompt(): string | undefined {
@@ -98,6 +115,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
     onUpdate(updatedConv)
     setStreaming(true)
     setStreamingText('')
+    setSearchingStatus(null)
 
     const abort = new AbortController()
     abortRef.current = abort
@@ -134,9 +152,18 @@ export default function ChatView({ conversation, onUpdate }: Props) {
         for (const line of chunk.split('\n').filter(Boolean)) {
           try {
             const parsed = JSON.parse(line)
-            if (parsed.type === 'text') { fullText += parsed.text; setStreamingText(fullText) }
-            else if (parsed.type === 'usage') usage = { inputTokens: parsed.usage.inputTokens, outputTokens: parsed.usage.outputTokens }
-            else if (parsed.type === 'error') { fullText += `\n\n⚠️ Error: ${parsed.error}`; setStreamingText(fullText) }
+            if (parsed.type === 'text') {
+              setSearchingStatus(null) // clear searching indicator once text starts
+              fullText += parsed.text
+              setStreamingText(fullText)
+            } else if (parsed.type === 'searching') {
+              setSearchingStatus(parsed.status)
+            } else if (parsed.type === 'usage') {
+              usage = { inputTokens: parsed.usage.inputTokens, outputTokens: parsed.usage.outputTokens }
+            } else if (parsed.type === 'error') {
+              fullText += `\n\n⚠️ ${parsed.error}`
+              setStreamingText(fullText)
+            }
           } catch { /* non-JSON */ }
         }
       }
@@ -149,7 +176,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
         usage,
         model,
       }
-      updatedConv = {
+      onUpdate({
         ...updatedConv,
         messages: [...updatedConv.messages, assistantMsg],
         updatedAt: Date.now(),
@@ -157,8 +184,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
           inputTokens: updatedConv.totalUsage.inputTokens + usage.inputTokens,
           outputTokens: updatedConv.totalUsage.outputTokens + usage.outputTokens,
         },
-      }
-      onUpdate(updatedConv)
+      })
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         onUpdate({
@@ -175,6 +201,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
     } finally {
       setStreaming(false)
       setStreamingText('')
+      setSearchingStatus(null)
     }
   }
 
@@ -224,6 +251,18 @@ export default function ChatView({ conversation, onUpdate }: Props) {
               <MessageBubble key={msg.id} message={msg} />
             ))}
 
+            {/* Searching status */}
+            {streaming && searchingStatus && (
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#da7756] to-[#c85a3a] flex items-center justify-center text-white text-xs font-semibold">C</div>
+                <div className="flex items-center gap-2 pt-1.5">
+                  <Globe size={14} className="text-blue-500 animate-pulse flex-shrink-0" />
+                  <span className="text-sm text-[var(--text-secondary)] italic">{searchingStatus}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Streaming text */}
             {streaming && streamingText && (
               <div className="flex gap-3">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#da7756] to-[#c85a3a] flex items-center justify-center text-white text-xs font-semibold">C</div>
@@ -237,7 +276,8 @@ export default function ChatView({ conversation, onUpdate }: Props) {
               </div>
             )}
 
-            {streaming && !streamingText && (
+            {/* Thinking dots (no text yet, not searching) */}
+            {streaming && !streamingText && !searchingStatus && (
               <div className="flex gap-3">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#da7756] to-[#c85a3a] flex items-center justify-center text-white text-xs font-semibold">C</div>
                 <div className="flex items-center gap-1.5 pt-2">
@@ -268,7 +308,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
           style={style}
           onStyleChange={setStyle}
           disabled={!conversation}
-          placeholder={streaming ? 'Claude is thinking… (click to cancel)' : undefined}
+          placeholder={streaming ? 'Click to stop' : undefined}
         />
       </div>
     </div>
