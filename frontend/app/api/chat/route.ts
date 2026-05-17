@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
+import Anthropic, { type MessageParam } from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -22,9 +22,10 @@ function detectProvider(modelId: string): 'anthropic' | 'google' | 'groq' {
 // ─── Message builders ─────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildAnthropicMessages(messages: any[]) {
-  return messages.map((msg: any) => {
+function buildAnthropicMessages(messages: any[]): MessageParam[] {
+  return messages.map((msg: any): MessageParam => {
     if (msg.role === 'user') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const content: any[] = []
       if (msg.attachments?.length) {
         for (const att of msg.attachments) {
@@ -38,7 +39,7 @@ function buildAnthropicMessages(messages: any[]) {
       content.push({ type: 'text', text: msg.content })
       return { role: 'user', content }
     }
-    return { role: 'assistant', content: msg.content }
+    return { role: 'assistant', content: msg.content as string }
   })
 }
 
