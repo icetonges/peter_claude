@@ -3,7 +3,7 @@
 import { Conversation } from '@/lib/types'
 import { Plus, MessageSquare, Trash2, ChevronLeft, ChevronRight, Zap, Layers,
          Search, FolderOpen, Code2, Settings, Palette, Moon, Sun, Monitor,
-         Star, X, ChevronDown, ExternalLink, PenSquare } from 'lucide-react'
+         Star, X, ExternalLink, PenSquare } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { calcCost, formatCost } from '@/lib/store'
@@ -55,7 +55,6 @@ export default function Sidebar({ conversations, activeId, onSelect, onNew, onDe
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [starredIds, setStarredIds] = useState<string[]>([])
   const [themeMode, setThemeMode] = useState<ThemeMode>('system')
-  const [moreOpen, setMoreOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -187,17 +186,10 @@ export default function Sidebar({ conversations, activeId, onSelect, onNew, onDe
           className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors">
           <Palette size={15} />Design
         </button>
-        <button onClick={() => setMoreOpen(p => !p)}
+        <Link href="/architecture"
           className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors">
-          <ChevronDown size={15} className={moreOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />More
-        </button>
-        {moreOpen && (
-          <div className="pl-4 space-y-0.5">
-            <Link href="/architecture" className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors">
-              <ExternalLink size={13} />Architecture
-            </Link>
-          </div>
-        )}
+          <ExternalLink size={15} />Architecture
+        </Link>
       </nav>
 
       {/* Dynamic section content */}

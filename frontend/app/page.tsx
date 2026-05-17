@@ -81,34 +81,7 @@ export default function Home() {
         onNewWithSkill={handleNewWithSkill}
       />
 
-      {activeConversation ? (
-        <ChatView conversation={activeConversation} onUpdate={handleUpdate} />
-      ) : (
-        /* New chat welcome screen */
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 bg-[var(--bg)]">
-          <div className="flex items-center gap-4">
-            <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <g transform="translate(26,26)">
-                <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(0)"/>
-                <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(45)"/>
-                <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(90)"/>
-                <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(135)"/>
-              </g>
-            </svg>
-            <h1 className="text-5xl font-normal tracking-tight text-[var(--text-primary)]" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
-              How can I help you?
-            </h1>
-          </div>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {['Write', 'Learn', 'Code', 'Life stuff'].map(label => (
-              <button key={label} onClick={handleNew}
-                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] transition-colors">
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <ChatView conversation={activeConversation} onUpdate={handleUpdate} onNew={handleNew} />
     </div>
   )
 }

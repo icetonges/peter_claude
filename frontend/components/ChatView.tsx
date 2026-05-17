@@ -10,6 +10,7 @@ import { Globe } from 'lucide-react'
 interface Props {
   conversation: Conversation | null
   onUpdate: (conv: Conversation) => void
+  onNew?: () => void
 }
 
 const STARTERS = [
@@ -161,7 +162,7 @@ const STYLE_INSTRUCTIONS: Record<Style, string> = {
   creative: 'Express yourself with creativity and flair. Vivid language, varied rhythm, engaging prose.',
 }
 
-export default function ChatView({ conversation, onUpdate }: Props) {
+export default function ChatView({ conversation, onUpdate, onNew }: Props) {
   const [streaming, setStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [searchingStatus, setSearchingStatus] = useState<string | null>(null)
@@ -173,6 +174,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
   const [style, setStyle] = useState<Style>('default')
   const [greeting, setGreeting] = useState('Hello')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const pendingRef = useRef<{ content: string; attachments: Attachment[] } | null>(null)
 
   useEffect(() => {
     const h = new Date().getHours()
@@ -189,6 +191,14 @@ export default function ChatView({ conversation, onUpdate }: Props) {
 
   useEffect(() => {
     if (conversation) setModel(conversation.model)
+  }, [conversation?.id])
+
+  useEffect(() => {
+    if (conversation && pendingRef.current) {
+      const { content, attachments } = pendingRef.current
+      pendingRef.current = null
+      handleSend(content, attachments)
+    }
   }, [conversation?.id])
 
   function handleWebSearchChange(val: boolean) {
@@ -215,7 +225,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
   }
 
   async function handleSend(content: string, attachments: Attachment[]) {
-    if (!conversation) return
+    if (!conversation) { pendingRef.current = { content, attachments }; onNew?.(); return }
     if (streaming) { abortRef.current?.abort(); return }
 
     const userMsg: Message = {
@@ -343,7 +353,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
             </div>
             <div className="flex flex-wrap gap-2 justify-center pb-6 px-4">
               {[{label:'Write',prompt:'Help me write '},{label:'Learn',prompt:'Explain to me '},{label:'Code',prompt:'Write code to '},{label:'Life stuff',prompt:'Help me with '},{label:"Claude's choice",prompt:'Surprise me with something interesting about '}].map(qa => (
-                <button key={qa.label} onClick={() => conversation && handleSend(qa.prompt, [])}
+                <button key={qa.label} onClick={() => handleSend(qa.prompt, [])}
                   className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:border-[var(--text-tertiary)] transition-colors">
                   {qa.label}
                 </button>
@@ -399,7 +409,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
           research={research} onResearchChange={setResearch}
           skill={skill} onSkillChange={setSkill}
           style={style} onStyleChange={setStyle}
-          disabled={!conversation}
+          disabled={streaming}
           placeholder={streaming ? 'Click to stop generation' : undefined}
         />
       </div>
