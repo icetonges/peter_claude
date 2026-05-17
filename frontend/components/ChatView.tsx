@@ -111,6 +111,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
           model,
           supportsVision: MODELS.find(m => m.id === model)?.supportsVision ?? false,
           systemPrompt: buildSystemPrompt(),
+          webSearch,
           messages: updatedConv.messages.map(m => ({
             role: m.role,
             content: m.content,
@@ -269,7 +270,4 @@ export default function ChatView({ conversation, onUpdate }: Props) {
           disabled={!conversation}
           placeholder={streaming ? 'Claude is thinking… (click to cancel)' : undefined}
         />
-      </div>
-    </div>
-  )
-}
+      </d

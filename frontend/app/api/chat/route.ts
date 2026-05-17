@@ -5,7 +5,7 @@ import { NextRequest } from 'next/server'
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
-// --- Provider detection ---
+// --- Provider detection (uses full model ID including groq/ prefix) ---
 
 function detectProvider(modelId: string): 'anthropic' | 'google' | 'groq' {
   if (modelId.startsWith('gemini')) return 'google'
@@ -16,21 +16,44 @@ function detectProvider(modelId: string): 'anthropic' | 'google' | 'groq' {
     modelId.startsWith('gemma') ||
     modelId.startsWith('qwen') ||
     modelId.startsWith('deepseek') ||
-    modelId.startsWith('groq/')
+    modelId.startsWith('groq/') ||
+    modelId === 'compound-beta' ||
+    modelId === 'compound-beta-mini'
   ) return 'groq'
   return 'anthropic'
 }
 
-// --- Build default system prompt with current date ---
+// Strip internal 'groq/' namespace prefix before sending to Groq API
+// e.g. 'groq/compound-beta' → 'compound-beta'
+function toGroqModelId(modelId: string): string {
+  return modelId.startsWith('groq/') ? modelId.slice(5) : modelId
+}
 
-function buildSystemPrompt(custom?: string): string {
+// --- System prompt builder ---
+
+function buildSystemPrompt(custom?: string, webSearch?: boolean): string {
   const now = new Date()
   const dateStr = now.toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
-  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC'
-  if (custom) return custom
-  return `You are a helpful, knowledgeable AI assistant. Today is ${dateStr} (${timeStr}). You can answer questions about current events up to your knowledge cutoff, and you always let users know when information may be outdated.`
+  const timeStr = now.toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
+  }) + ' UTC'
+
+  const dateLine = `Today is ${dateStr} (${timeStr}).`
+
+  if (custom) {
+    // Prepend date to custom system prompt
+    return `${dateLine}\n\n${custom}`
+  }
+
+  const base = `You are a helpful, knowledgeable AI assistant. ${dateLine} You can answer questions about current events up to your knowledge cutoff, and you always let users know when information may be outdated.`
+
+  if (webSearch) {
+    return base + '\n\nYou have access to real-time web search. When asked about current events, recent news, or any information that might have changed, proactively search the web and base your answer on fresh results. Always cite the sources you found.'
+  }
+
+  return base
 }
 
 // --- Message builders ---
@@ -81,6 +104,27 @@ function buildOpenAIMessages(systemPrompt: string, messages: any[], supportsVisi
   return result
 }
 
+// Build Gemini native API content array
+function buildGeminiContents(messages: any[]) {
+  return messages.map((msg: any) => {
+    if (msg.role === 'user') {
+      const parts: any[] = []
+      if (msg.attachments?.length) {
+        for (const att of msg.attachments) {
+          if (att.type.startsWith('image/')) {
+            parts.push({ inline_data: { mime_type: att.type, data: att.data } })
+          } else {
+            parts.push({ text: `[File: ${att.name}]\n${Buffer.from(att.data, 'base64').toString('utf-8')}` })
+          }
+        }
+      }
+      parts.push({ text: msg.content || '' })
+      return { role: 'user', parts }
+    }
+    return { role: 'model', parts: [{ text: msg.content || '' }] }
+  })
+}
+
 // --- Streaming helpers ---
 
 const encoder = new TextEncoder()
@@ -123,7 +167,7 @@ async function streamAnthropic(
   enqueue(controller, { type: 'usage', usage })
 }
 
-// --- OpenAI-compatible streaming (Gemini / Groq) ---
+// --- OpenAI-compatible streaming (Groq / Gemini OpenAI-compat) ---
 
 async function streamOpenAICompat(
   endpoint: string,
@@ -162,7 +206,6 @@ async function streamOpenAICompat(
     const { done, value } = await reader.read()
     if (done) break
     buf += dec.decode(value, { stream: true })
-
     const lines = buf.split('\n')
     buf = lines.pop() ?? ''
 
@@ -170,7 +213,6 @@ async function streamOpenAICompat(
       const trimmed = line.trim()
       if (!trimmed || trimmed === 'data: [DONE]') continue
       if (!trimmed.startsWith('data: ')) continue
-
       try {
         const json = JSON.parse(trimmed.slice(6))
         const delta = json.choices?.[0]?.delta?.content
@@ -184,8 +226,82 @@ async function streamOpenAICompat(
       } catch { /* malformed line */ }
     }
   }
-
   enqueue(controller, { type: 'usage', usage })
+}
+
+// --- Gemini native streaming (supports Google Search grounding) ---
+
+async function streamGeminiNative(
+  model: string,
+  apiKey: string,
+  systemPrompt: string,
+  messages: any[],
+  webSearch: boolean,
+  controller: ReadableStreamDefaultController
+) {
+  const contents = buildGeminiContents(messages)
+
+  const body: any = {
+    contents,
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    generationConfig: { maxOutputTokens: 8192 },
+  }
+
+  // Enable Google Search grounding when web search is requested
+  if (webSearch) {
+    body.tools = [{ google_search: {} }]
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => res.statusText)
+    throw new Error(`Gemini API error ${res.status}: ${errText}`)
+  }
+
+  const reader = res.body!.getReader()
+  const dec = new TextDecoder()
+  let buf = ''
+  let inputTokens = 0, outputTokens = 0
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += dec.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed === 'data: [DONE]') continue
+      if (!trimmed.startsWith('data: ')) continue
+      try {
+        const json = JSON.parse(trimmed.slice(6))
+        // Extract text from candidates
+        const parts = json.candidates?.[0]?.content?.parts ?? []
+        for (const part of parts) {
+          if (part.text) enqueue(controller, { type: 'text', text: part.text })
+        }
+        // Extract grounding sources if present
+        const groundingMeta = json.candidates?.[0]?.groundingMetadata
+        if (groundingMeta?.webSearchQueries?.length) {
+          // Optionally send search queries as metadata
+          enqueue(controller, { type: 'grounding', queries: groundingMeta.webSearchQueries })
+        }
+        // Usage metadata
+        if (json.usageMetadata) {
+          inputTokens = json.usageMetadata.promptTokenCount ?? inputTokens
+          outputTokens = json.usageMetadata.candidatesTokenCount ?? outputTokens
+        }
+      } catch { /* malformed */ }
+    }
+  }
+  enqueue(controller, { type: 'usage', usage: { inputTokens, outputTokens } })
 }
 
 // --- Route handler ---
@@ -193,12 +309,31 @@ async function streamOpenAICompat(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { messages, model, systemPrompt, supportsVision } = body
+    const { messages, model: requestedModel, systemPrompt, supportsVision, webSearch } = body
 
-    if (!model) return Response.json({ error: 'model is required' }, { status: 400 })
+    if (!requestedModel) return Response.json({ error: 'model is required' }, { status: 400 })
 
-    const provider = detectProvider(model)
-    const sys = buildSystemPrompt(systemPrompt)
+    // Determine effective model — if web search requested, route to compound-beta on Groq
+    // (compound-beta has built-in real-time web search)
+    const groqKey = process.env.GROQ_API_KEY
+    const useCompound = webSearch && groqKey
+
+    // If web search on Gemini: use native Gemini API with Google Search grounding
+    // If web search on any non-Groq model without groq key: fall back to native Gemini grounding
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY
+    const requestedProvider = detectProvider(requestedModel)
+    const useGeminiGrounding = webSearch && requestedProvider === 'google' && geminiKey
+
+    let model = requestedModel
+    let provider = requestedProvider
+
+    // Force compound-beta when web search is on and we're not on Gemini (Gemini has its own grounding)
+    if (useCompound && !useGeminiGrounding) {
+      model = 'compound-beta'
+      provider = 'groq'
+    }
+
+    const sys = buildSystemPrompt(systemPrompt, webSearch)
 
     const stream = makeStream(async (controller) => {
       try {
@@ -208,26 +343,34 @@ export async function POST(req: NextRequest) {
           await streamAnthropic(model, sys, messages, controller)
 
         } else if (provider === 'google') {
-          const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY
-          if (!apiKey) throw new Error('GEMINI_API_KEY is not set. Get a free key at aistudio.google.com and add it to Vercel.')
-          const oaiMessages = buildOpenAIMessages(sys, messages, !!supportsVision)
-          await streamOpenAICompat(
-            'https://generativelanguage.googleapis.com/v1beta/openai',
-            apiKey,
-            model,
-            oaiMessages,
-            controller,
-            'Gemini',
-          )
+          if (!geminiKey) throw new Error('GEMINI_API_KEY is not set. Get a free key at aistudio.google.com and add it to Vercel.')
+
+          if (webSearch) {
+            // Use native Gemini API with Google Search grounding
+            await streamGeminiNative(model, geminiKey, sys, messages, true, controller)
+          } else {
+            // Use OpenAI-compatible endpoint for non-search requests
+            const oaiMessages = buildOpenAIMessages(sys, messages, !!supportsVision)
+            await streamOpenAICompat(
+              'https://generativelanguage.googleapis.com/v1beta/openai',
+              geminiKey,
+              model,
+              oaiMessages,
+              controller,
+              'Gemini',
+            )
+          }
 
         } else if (provider === 'groq') {
-          const apiKey = process.env.GROQ_API_KEY
-          if (!apiKey) throw new Error('GROQ_API_KEY is not set. Get a free key at console.groq.com and add it to Vercel.')
+          if (!groqKey) throw new Error('GROQ_API_KEY is not set. Get a free key at console.groq.com and add it to Vercel.')
+          // CRITICAL: strip 'groq/' internal prefix — Groq API uses bare model names
+          // 'groq/compound-beta' → 'compound-beta', 'llama-3.3-70b-versatile' stays as-is
+          const groqModelId = toGroqModelId(model)
           const oaiMessages = buildOpenAIMessages(sys, messages, false)
           await streamOpenAICompat(
             'https://api.groq.com/openai/v1',
-            apiKey,
-            model,
+            groqKey,
+            groqModelId,
             oaiMessages,
             controller,
             'Groq',
