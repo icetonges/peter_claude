@@ -9,8 +9,8 @@ export interface ModelInfo {
   provider: Provider
   providerLabel: string
   providerColor: string       // for badges
-  inputPricePer1M: number     // USD — 0 for free models
-  outputPricePer1M: number    // USD — 0 for free models
+  inputPricePer1M: number     // USD -- 0 for free models
+  outputPricePer1M: number    // USD -- 0 for free models
   description: string
   contextWindow: string       // e.g. "200K", "1M"
   isFree: boolean
@@ -19,11 +19,11 @@ export interface ModelInfo {
   badge?: string              // e.g. "Recommended", "Fastest", "New"
 }
 
-// ─── MODEL REGISTRY ───────────────────────────────────────────────────────────
+// --- MODEL REGISTRY ---
 
 export const MODELS: ModelInfo[] = [
 
-  // ── Google Gemini (free via Google AI Studio) ─────────────────────────────
+  // Google Gemini (free via Google AI Studio)
   {
     id: 'gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
@@ -32,7 +32,7 @@ export const MODELS: ModelInfo[] = [
     providerColor: '#4285f4',
     inputPricePer1M: 0,
     outputPricePer1M: 0,
-    description: 'Best free model · 1M context · thinking mode',
+    description: 'Best free model - 1M context - thinking mode',
     contextWindow: '1M',
     isFree: true,
     supportsVision: true,
@@ -54,7 +54,23 @@ export const MODELS: ModelInfo[] = [
     badge: 'Fastest',
   },
 
-  // ── Groq — Llama (free tier, ultra-fast) ─────────────────────────────────
+  // Groq -- Compound (agentic, built-in web search)
+  {
+    id: 'groq/compound-beta',
+    name: 'Compound Beta',
+    provider: 'groq',
+    providerLabel: 'Groq',
+    providerColor: '#f55036',
+    inputPricePer1M: 0,
+    outputPricePer1M: 0,
+    description: 'Agentic - built-in web search - auto tool use',
+    contextWindow: '128K',
+    isFree: true,
+    supportsVision: false,
+    badge: 'New',
+  },
+
+  // Groq -- Llama (free tier, ultra-fast)
   {
     id: 'meta-llama/llama-4-scout-17b-16e-instruct',
     name: 'Llama 4 Scout',
@@ -67,7 +83,6 @@ export const MODELS: ModelInfo[] = [
     contextWindow: '128K',
     isFree: true,
     supportsVision: true,
-    badge: 'New',
   },
   {
     id: 'llama-3.3-70b-versatile',
@@ -110,7 +125,7 @@ export const MODELS: ModelInfo[] = [
     supportsVision: false,
   },
 
-  // ── Anthropic Claude (paid) ───────────────────────────────────────────────
+  // Anthropic Claude (paid)
   {
     id: 'claude-sonnet-4-6',
     name: 'Claude Sonnet 4.6',
@@ -156,7 +171,7 @@ export const MODELS: ModelInfo[] = [
 export const DEFAULT_MODEL_ID: ModelId =
   MODELS.find(m => m.isDefault)?.id ?? 'gemini-2.5-flash'
 
-// ─── OTHER TYPES ──────────────────────────────────────────────────────────────
+// --- OTHER TYPES ---
 
 export interface Attachment {
   id: string

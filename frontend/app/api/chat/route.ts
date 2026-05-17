@@ -15,9 +15,22 @@ function detectProvider(modelId: string): 'anthropic' | 'google' | 'groq' {
     modelId.startsWith('mixtral') ||
     modelId.startsWith('gemma') ||
     modelId.startsWith('qwen') ||
-    modelId.startsWith('deepseek')
+    modelId.startsWith('deepseek') ||
+    modelId.startsWith('groq/')
   ) return 'groq'
   return 'anthropic'
+}
+
+// --- Build default system prompt with current date ---
+
+function buildSystemPrompt(custom?: string): string {
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  })
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC'
+  if (custom) return custom
+  return `You are a helpful, knowledgeable AI assistant. Today is ${dateStr} (${timeStr}). You can answer questions about current events up to your knowledge cutoff, and you always let users know when information may be outdated.`
 }
 
 // --- Message builders ---
@@ -185,7 +198,7 @@ export async function POST(req: NextRequest) {
     if (!model) return Response.json({ error: 'model is required' }, { status: 400 })
 
     const provider = detectProvider(model)
-    const sys = systemPrompt || 'You are a helpful AI assistant.'
+    const sys = buildSystemPrompt(systemPrompt)
 
     const stream = makeStream(async (controller) => {
       try {
