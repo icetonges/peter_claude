@@ -1,4 +1,5 @@
-import Anthropic, { type MessageParam } from '@anthropic-ai/sdk'
+import Anthropic from '@anthropic-ai/sdk'
+type MessageParam = Anthropic.MessageParam
 import { NextRequest } from 'next/server'
 
 export const runtime = 'nodejs'
