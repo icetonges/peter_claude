@@ -334,7 +334,6 @@ export default function ChatView({ conversation, onUpdate, onNew }: Props) {
 
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (
-          {/* Single centered block — greeting → input → pills, just like Claude.ai */}
           <div className="flex flex-col h-full items-center justify-center px-4">
             <div className="w-full max-w-2xl flex flex-col items-center gap-5">
               {/* Greeting */}
