@@ -1,8 +1,9 @@
 'use client'
 
 import { Conversation } from '@/lib/types'
-import { Plus, MessageSquare, Trash2, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
+import { Plus, MessageSquare, Trash2, ChevronLeft, ChevronRight, Zap, Layers } from 'lucide-react'
 import { useState } from 'react'
+import Link from 'next/link'
 import { calcCost, formatCost } from '@/lib/store'
 import { MODELS } from '@/lib/types'
 
@@ -150,15 +151,22 @@ export default function Sidebar({ conversations, activeId, onSelect, onNew, onDe
             ))}
           </div>
 
-          {/* Footer: total cost */}
-          {conversations.length > 0 && (
-            <div className="border-t border-[var(--border)] px-3 py-2.5">
+          {/* Footer */}
+          <div className="border-t border-[var(--border)] px-3 py-2.5 space-y-1.5">
+            {conversations.length > 0 && (
               <div className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
                 <Zap size={11} className="text-[var(--accent-muted)]" />
                 <span>Total cost: <span className="text-[var(--text-secondary)]">{formatCost(totalCost)}</span></span>
               </div>
-            </div>
-          )}
+            )}
+            <Link
+              href="/architecture"
+              className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+            >
+              <Layers size={11} />
+              <span>Architecture</span>
+            </Link>
+          </div>
         </>
       )}
     </aside>
