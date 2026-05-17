@@ -334,11 +334,12 @@ export default function ChatView({ conversation, onUpdate, onNew }: Props) {
 
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (
-          <div className="flex flex-col h-full">
-            {/* Greeting — vertically centered in the upper portion */}
-            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4">
-              <div className="flex items-center gap-4">
-                <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Single centered block — greeting → input → pills, just like Claude.ai */}
+          <div className="flex flex-col h-full items-center justify-center px-4">
+            <div className="w-full max-w-2xl flex flex-col items-center gap-5">
+              {/* Greeting */}
+              <div className="flex items-center gap-3 mb-1">
+                <svg width="44" height="44" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <g transform="translate(26,26)">
                     <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756"/>
                     <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(45)"/>
@@ -346,14 +347,23 @@ export default function ChatView({ conversation, onUpdate, onNew }: Props) {
                     <rect x="-5.5" y="-18" width="11" height="36" rx="5.5" fill="#da7756" transform="rotate(135)"/>
                   </g>
                 </svg>
-                <h1 className="text-5xl font-normal tracking-tight text-[var(--text-primary)]" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
+                <h1 className="text-4xl font-normal tracking-tight text-[var(--text-primary)]" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
                   {greeting}
                 </h1>
               </div>
-              <p className="text-sm text-[var(--text-tertiary)]">Powered by {modelInfo.name}</p>
-            </div>
-            {/* Pills + input box — grouped below greeting, centered */}
-            <div className="flex flex-col items-center gap-4 pb-10 px-4 w-full max-w-3xl mx-auto">
+              {/* Input box — right below greeting */}
+              <div className="w-full">
+                <MessageInput
+                  onSend={handleSend} model={model} onModelChange={setModel}
+                  webSearch={webSearch} onWebSearchChange={handleWebSearchChange}
+                  research={research} onResearchChange={setResearch}
+                  skill={skill} onSkillChange={setSkill}
+                  style={style} onStyleChange={setStyle}
+                  disabled={streaming}
+                  placeholder={streaming ? 'Click to stop generation' : undefined}
+                />
+              </div>
+              {/* Pill buttons — below input */}
               <div className="flex flex-wrap gap-2 justify-center">
                 {[{label:'Write',prompt:'Help me write '},{label:'Learn',prompt:'Explain to me '},{label:'Code',prompt:'Write code to '},{label:'Life stuff',prompt:'Help me with '},{label:"Claude's choice",prompt:'Surprise me with something interesting about '}].map(qa => (
                   <button key={qa.label} onClick={() => handleSend(qa.prompt, [])}
@@ -362,15 +372,6 @@ export default function ChatView({ conversation, onUpdate, onNew }: Props) {
                   </button>
                 ))}
               </div>
-              <MessageInput
-                onSend={handleSend} model={model} onModelChange={setModel}
-                webSearch={webSearch} onWebSearchChange={handleWebSearchChange}
-                research={research} onResearchChange={setResearch}
-                skill={skill} onSkillChange={setSkill}
-                style={style} onStyleChange={setStyle}
-                disabled={streaming}
-                placeholder={streaming ? 'Click to stop generation' : undefined}
-              />
             </div>
           </div>
         ) : (
