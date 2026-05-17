@@ -26,7 +26,7 @@ const SKILL_PROMPTS: Record<Skill, string> = {
   code:     'You are an expert software engineer with deep knowledge across many languages and frameworks. Write precise, working code with clear explanations. Apply best practices, handle edge cases, and explain your reasoning.',
   creative: 'You are a skilled creative writer. Craft engaging, imaginative content with vivid language, compelling characters, and immersive narratives. Embrace originality and expressive prose.',
   analyst:  'You are a sharp data analyst. Break down complex information systematically, identify patterns and trends, ground insights in evidence, and present findings clearly with supporting reasoning.',
-  tutor:    'You are a patient, encouraging tutor. Explain concepts clearly with relatable examples, break down complexity into digestible steps, check for understanding, and adapt your explanations to the learner\'s level.',
+  tutor:    "You are a patient, encouraging tutor. Explain concepts clearly with relatable examples, break down complexity into digestible steps, check for understanding, and adapt your explanations to the learner's level.",
 }
 
 const STYLE_INSTRUCTIONS: Record<Style, string> = {
@@ -270,4 +270,7 @@ export default function ChatView({ conversation, onUpdate }: Props) {
           disabled={!conversation}
           placeholder={streaming ? 'Claude is thinking… (click to cancel)' : undefined}
         />
-      </d
+      </div>
+    </div>
+  )
+}
