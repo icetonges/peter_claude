@@ -2,9 +2,9 @@ import Anthropic from '@anthropic-ai/sdk'
 type MessageParam = Anthropic.MessageParam
 import { NextRequest } from 'next/server'
 
-export const runtime = 'nodejs'
+export const runtime = 'nodejs' as const
 export const maxDuration = 120
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic' as const
 
 // ─── Provider detection ───────────────────────────────────────────────────────
 
@@ -72,4 +72,4 @@ function buildOpenAIMessages(systemPrompt: string, messages: any[], supportsVisi
   return result
 }
 
-// ─── Streaming helpers ─────────────────
+// ─── Streaming helpers ───────────
