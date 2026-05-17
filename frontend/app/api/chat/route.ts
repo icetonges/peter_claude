@@ -4,6 +4,10 @@ import { NextRequest } from 'next/server'
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
+// Allow up to 10 MB request body (for image/file uploads)
+export const fetchCache = 'force-no-store'
+export const dynamic = 'force-dynamic'
+
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
