@@ -19,6 +19,8 @@ interface Props {
   onNew: () => void
   onDelete: (id: string) => void
   onNewWithSkill?: (skill: string) => void
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 function groupByDate(convs: Conversation[]) {
@@ -48,7 +50,8 @@ function groupByDate(convs: Conversation[]) {
   return groups
 }
 
-export default function Sidebar({ conversations, activeId, onSelect, onNew, onDelete, onNewWithSkill }: Props) {
+export default function Sidebar({ conversations, activeId, onSelect: _onSelect, onNew, onDelete, onNewWithSkill, isOpen = false, onClose }: Props) {
+  function onSelect(id: string) { _onSelect(id); onClose?.() }
   const [collapsed, setCollapsed] = useState(false)
   const [navSection, setNavSection] = useState<NavSection>('chats')
   const [searchQuery, setSearchQuery] = useState('')
@@ -121,7 +124,7 @@ export default function Sidebar({ conversations, activeId, onSelect, onNew, onDe
 
   if (collapsed) {
     return (
-      <aside className="flex flex-col items-center border-r border-[var(--border)] bg-[var(--sidebar-bg)] w-12 py-2 gap-1">
+      <aside className="hidden md:flex flex-col items-center border-r border-[var(--border)] bg-[var(--sidebar-bg)] w-12 py-2 gap-1">
         <button onClick={onNew} title="New chat" className="p-2 rounded-lg text-[var(--accent)] hover:bg-[var(--surface-hover)] transition-colors"><Plus size={18} /></button>
         <div className="w-6 border-t border-[var(--border)] my-1" />
         {([['search', Search], ['chats', MessageSquare], ['projects', FolderOpen], ['artifacts', Layers]] as [NavSection, any][]).map(([id, Icon]) => (
@@ -141,14 +144,33 @@ export default function Sidebar({ conversations, activeId, onSelect, onNew, onDe
   }
 
   return (
-    <aside className="flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] w-64">
+    <>
+      {/* Mobile backdrop — tap to close */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside className={[
+        'flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)]',
+        // Mobile: fixed overlay, slides in from left
+        'fixed inset-y-0 left-0 z-50 w-72',
+        'transform transition-transform duration-300 ease-in-out',
+        isOpen ? 'translate-x-0' : '-translate-x-full',
+        // Desktop: always visible as part of flex row
+        'md:relative md:translate-x-0 md:w-64 md:z-auto',
+      ].join(' ')}>
 
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
         <span className="text-sm font-semibold text-[var(--text-primary)]">PeterClaude</span>
         <div className="flex items-center gap-1">
           <button onClick={onNew} title="New chat" className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors"><PenSquare size={14} /></button>
-          <button onClick={() => setCollapsed(true)} title="Collapse" className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)] transition-colors"><ChevronLeft size={14} /></button>
+          {/* Close button: mobile only */}
+          <button onClick={onClose} title="Close" className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)] transition-colors md:hidden"><X size={16} /></button>
+          {/* Collapse button: desktop only */}
+          <button onClick={() => setCollapsed(true)} title="Collapse" className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-hover)] transition-colors hidden md:flex"><ChevronLeft size={14} /></button>
         </div>
       </div>
 
@@ -298,7 +320,8 @@ export default function Sidebar({ conversations, activeId, onSelect, onNew, onDe
           </div>
         </div>
       )}
-    </aside>
+      </aside>
+    </>
   )
 }
 
